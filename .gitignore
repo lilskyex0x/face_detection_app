@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.spec
+
+# py2app specific
+.eggs/
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# PyCharm
+.idea/
+*.iml
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Face detection project specific
+face_dataset/
+*.jpg
+*.png
+*.jpeg
+
+# Or if you want to keep the structure but ignore images:
+# face_dataset/*/
+# !face_dataset/.gitkeep

@@ -12,7 +12,7 @@ if getattr(sys, 'frozen', False):
 else:
     DATASET_DIR = os.path.join(os.path.dirname(__file__), "face_dataset")
 
-TOTAL_IMAGES = 10
+TOTAL_IMAGES = 20
 CAPTURE_INTERVAL = 1
 
 
@@ -85,7 +85,20 @@ class NameDialog:
         self.result = None
         self.dialog = tk.Toplevel(parent)
         self.dialog.title(title)
-        self.dialog.geometry("350x150")
+
+        # Try to force light appearance on macOS
+        try:
+            # This works on macOS to override dark mode
+            self.dialog.tk.call('tk', 'useinputmethods', '-displayof', self.dialog, True)
+        except:
+            pass
+
+        # Larger window for better visibility
+        self.dialog.geometry("450x220")
+        self.dialog.minsize(450, 220)
+
+        # Set light background
+        self.dialog.configure(bg='white')
 
         # Make dialog modal and bring to front
         self.dialog.transient(parent)
@@ -93,29 +106,83 @@ class NameDialog:
         self.dialog.lift()
         self.dialog.focus_force()
 
-        # Prompt label
-        label = tk.Label(self.dialog, text=prompt, font=("Arial", 12))
-        label.pack(pady=20)
+        # Add some padding at top
+        top_spacer = tk.Frame(self.dialog, bg='white', height=30)
+        top_spacer.pack()
 
-        # Entry field
-        self.entry = tk.Entry(self.dialog, font=("Arial", 12), width=30)
-        self.entry.pack(pady=10)
-        self.entry.focus_set()
+        # Prompt label with better styling
+        label = tk.Label(self.dialog, text=prompt,
+                         font=("Helvetica", 14, "bold"),
+                         bg='white', fg='#333333')
+        label.pack(pady=15)
 
-        # Bind Enter key
+        # Container frame for entry
+        entry_container = tk.Frame(self.dialog, bg='white')
+        entry_container.pack(pady=10, padx=40, fill=tk.X)
+
+        # Create a visible border frame
+        border_frame = tk.Frame(entry_container,
+                                bg='#2196F3',  # Blue border
+                                bd=0,
+                                highlightthickness=2,
+                                highlightbackground='#2196F3',
+                                highlightcolor='#2196F3')
+        border_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Entry field with maximum visibility settings
+        self.entry = tk.Entry(border_frame,
+                              font=("Helvetica", 15),
+                              bg='#FFFFFF',  # White background
+                              fg='#000000',  # Black text
+                              insertbackground='#2196F3',  # Blue cursor
+                              selectbackground='#2196F3',  # Selection color
+                              selectforeground='#FFFFFF',  # Selected text color
+                              relief=tk.FLAT,
+                              bd=8)
+        self.entry.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+
+        # Add placeholder behavior
+        self.entry.insert(0, "Type name here...")
+        self.entry.config(fg='#999999')
+
+        def on_focus_in(event):
+            if self.entry.get() == "Type name here...":
+                self.entry.delete(0, tk.END)
+                self.entry.config(fg='#000000')
+
+        def on_focus_out(event):
+            if not self.entry.get():
+                self.entry.insert(0, "Type name here...")
+                self.entry.config(fg='#999999')
+
+        self.entry.bind('<FocusIn>', on_focus_in)
+        self.entry.bind('<FocusOut>', on_focus_out)
         self.entry.bind('<Return>', lambda e: self.on_ok())
 
         # Buttons frame
-        btn_frame = tk.Frame(self.dialog)
-        btn_frame.pack(pady=10)
+        btn_frame = tk.Frame(self.dialog, bg='white')
+        btn_frame.pack(pady=20)
 
-        ok_btn = tk.Button(btn_frame, text="OK", command=self.on_ok,
-                           width=10, bg="#4CAF50", fg="white", font=("Arial", 11))
-        ok_btn.pack(side=tk.LEFT, padx=5)
+        # Styled buttons
+        ok_btn = tk.Button(btn_frame, text="✓ OK", command=self.on_ok,
+                           width=15, height=2,
+                           bg="#4CAF50", fg="white",
+                           font=("Helvetica", 13, "bold"),
+                           activebackground="#45a049",
+                           activeforeground="white",
+                           relief=tk.FLAT,
+                           cursor="hand2")
+        ok_btn.pack(side=tk.LEFT, padx=8)
 
-        cancel_btn = tk.Button(btn_frame, text="Cancel", command=self.on_cancel,
-                               width=10, font=("Arial", 11))
-        cancel_btn.pack(side=tk.LEFT, padx=5)
+        cancel_btn = tk.Button(btn_frame, text="✕ Cancel", command=self.on_cancel,
+                               width=15, height=2,
+                               bg="#f44336", fg="white",
+                               font=("Helvetica", 13, "bold"),
+                               activebackground="#da190b",
+                               activeforeground="white",
+                               relief=tk.FLAT,
+                               cursor="hand2")
+        cancel_btn.pack(side=tk.LEFT, padx=8)
 
         # Center on parent
         self.dialog.update_idletasks()
@@ -123,11 +190,20 @@ class NameDialog:
         y = parent.winfo_y() + (parent.winfo_height() - self.dialog.winfo_height()) // 2
         self.dialog.geometry(f"+{x}+{y}")
 
+        # Delayed focus to ensure entry is ready
+        self.dialog.after(100, lambda: self.entry.focus_set())
+        self.dialog.after(150, lambda: self.entry.icursor(tk.END))
+
         # Wait for dialog to close
         parent.wait_window(self.dialog)
 
     def on_ok(self):
-        self.result = self.entry.get()
+        text = self.entry.get()
+        # Remove placeholder text if present
+        if text == "Type name here...":
+            self.result = ""
+        else:
+            self.result = text
         self.dialog.destroy()
 
     def on_cancel(self):
@@ -251,28 +327,28 @@ class FaceDetectionApp:
 
     def capture_menu(self):
         print("\n" + ">" * 50)
-        print("CAPTURE MENU CLICKED")
+        print("CAPTURE FACE IMAGES")
         print(">" * 50)
+        print("\n>>> Please enter the person's name in the TERMINAL/CONSOLE window")
+        print(">>> (Look for the window where you started this program)\n")
 
-        print(">>> Showing name input dialog...")
+        # Get input from terminal instead of GUI
         try:
-            dialog = NameDialog(self.root, "Input", "Enter person name:")
-            name = dialog.result
-            print(f">>> User input: {repr(name)}")
+            name = input("Enter person name: ").strip()
+            print(f"\n>>> You entered: '{name}'")
         except Exception as e:
-            print(f">>> ERROR showing dialog: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f">>> ERROR getting input: {e}")
+            messagebox.showerror("Error", "Failed to get input. Please check the terminal/console window.")
             return
 
-        if name and name.strip():
-            print(f">>> Name is valid: '{name.strip()}'")
-            print(">>> Hiding main window...")
+        if name:
+            print(f">>> Starting capture for: {name}")
+            # Hide the main window during capture
             self.root.withdraw()
-            print(">>> Starting capture...")
+            print(">>> Main window hidden, starting capture...")
 
             try:
-                self.capture_faces(name.strip())
+                self.capture_faces(name)
                 print(">>> Capture completed!")
             except Exception as e:
                 print(f">>> ERROR in capture_faces: {e}")
@@ -283,30 +359,38 @@ class FaceDetectionApp:
                 print(">>> Showing main window again...")
                 self.root.deiconify()
                 self.root.lift()
-        elif name is not None:
-            print(">>> No name entered - showing warning")
-            messagebox.showwarning("Warning", "Please enter a name!")
         else:
-            print(">>> User cancelled dialog")
+            print(">>> No name entered")
+            messagebox.showwarning("Warning", "Please enter a name!")
 
         print(">" * 50)
         print("CAPTURE MENU COMPLETE")
         print(">" * 50 + "\n")
 
     def process_menu(self):
-        dialog = NameDialog(self.root, "Input", "Enter person name:")
-        name = dialog.result
-        if name and name.strip():
-            self.process_images(name.strip())
-        elif name is not None:
+        print("\n>>> Please enter the person's name in the TERMINAL/CONSOLE window\n")
+        try:
+            name = input("Enter person name to process: ").strip()
+        except Exception as e:
+            messagebox.showerror("Error", "Failed to get input. Check terminal.")
+            return
+
+        if name:
+            self.process_images(name)
+        else:
             messagebox.showwarning("Warning", "Please enter a name!")
 
     def display_menu(self):
-        dialog = NameDialog(self.root, "Input", "Enter person name:")
-        name = dialog.result
-        if name and name.strip():
-            self.display_results(name.strip())
-        elif name is not None:
+        print("\n>>> Please enter the person's name in the TERMINAL/CONSOLE window\n")
+        try:
+            name = input("Enter person name to display: ").strip()
+        except Exception as e:
+            messagebox.showerror("Error", "Failed to get input. Check terminal.")
+            return
+
+        if name:
+            self.display_results(name)
+        else:
             messagebox.showwarning("Warning", "Please enter a name!")
 
     def capture_faces(self, person_name):
